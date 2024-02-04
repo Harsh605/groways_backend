@@ -1,0 +1,172 @@
+import activities from "../models/activity.js";
+import packages from "../models/package.js";
+import users from "../models/users.js";
+
+// function for insert data in package model 
+export const buyPackage=async(req,res)=>{
+    try{
+        const {userId , address, transactionHash, packageType } = req.body;
+        // Check all the values coming from req.body
+        if(!userId) res.status(400).json({message:"Invalid userId.userId must contain some value"});
+        if(!address) res.status(400).json({message:"Invalid address.address must contain some value"});
+        if(!packageType) res.status(400).json({message:"Invalid packageType.packageType must contain some value"});
+        //==================================================//
+        // check if user is present in our systwm or not 
+        const exists = await users.findOne({address});
+        if(!exists){
+            res.status(400).json({message:"User Not Found"});
+        }
+        if(exists.packageBought.includes(packageType)){
+            res.status(400).json({message:"package Already Bought"});
+        }
+        let  refferAddressOfUser=exists.referBy;
+        //==================================================//
+        let upgradePackgeAddress;
+        let upgradePackgeAddressData;
+        if(packageType=='20'){
+            upgradePackgeAddress=await getUplineAddresses(address,2);
+            upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+            if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                upgradePackgeAddress=await getUplineAddresses(address,3);
+                upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                    upgradePackgeAddress=await getUplineAddresses(address,4);
+                    upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                    if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                        upgradePackgeAddress=await getUplineAddresses(address,5);
+                        upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                        if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                            upgradePackgeAddress=await getUplineAddresses(address,6);
+                            upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                            if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                                upgradePackgeAddress=await getUplineAddresses(address,7);
+                                upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                                if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                                    upgradePackgeAddress=await getUplineAddresses(address,8);
+                                    upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                                    if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                                        upgradePackgeAddress=await getUplineAddresses(address,9);
+                                        upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                                        if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                                            upgradePackgeAddress=await getUplineAddresses(address,10);
+                                            upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                                            if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
+                                                upgradePackgeAddress=await getUplineAddresses(address,11);
+                                                upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }
+        let {uplineAddresses,currentLevel}=await getUplineAddresses(address);
+        let amountToDistributetoRefferal = Number(packageType)/2; // 123
+        
+        // const boughtPackage = await packages.create({
+        //     userId,
+        //     address,
+        //     transactionHash,
+        //     package:packageType
+        // });
+        // await boughtPackage.save();
+
+        // await activities.create({
+        //     userId ,               // creates teh activity 
+        //     activiy : `ID ${userId} +${packageType}BUSD`,
+        //     transactionHash 
+        // });
+
+        return res.status(200).json({message : "Data Validate successfully",data:{"refferAddress":refferAddressOfUser,"uplineAddres":uplineAddresses,"amountForReffeal":Number(packageType)}})
+
+    }catch (error){
+        console.log("error",error.message);
+    }
+}
+
+//function to fetch data of a perticular user from model
+export const fetchPackage=async(req,res)=>{
+    try{
+        const {address,userId,startDate, endDate} = req.body;
+        if(!userId) res.status(400).json({message:"Invalid userId.userId must contain some value"});
+        const exists = await users.findOne({address});
+        if(!exists){
+            res.status(400).json({message:"User Not Found"});
+        }
+        let result = await filterData(userId, startDate, endDate);
+        console.log("result",result);
+
+        if (!result) {
+            result = await packages
+            .find({ userId })
+            .sort({ createdAt: "desc" });
+         }
+        let array = Array();
+        let j = 1;
+        for (let i = 0; i < result.length; i++) {
+            array.push({ id: j + i, ...result[i]._doc });
+        }
+        if(array) res.status(200).json({ result: array });
+        else res.status(404).json({message:"Data Not found"});
+
+    }catch (error){
+        console.log(error.message,"error")
+    }
+}
+
+// function to filter the data according to date 
+const filterData = async (userId, startDate, endDate) => {
+    let query;
+  if (startDate && endDate) {
+    const sdate = new Date(startDate);
+
+    const edate = new Date(endDate);
+    query = {
+      $and: [
+        { createdAt: { $gte: sdate, $lte: edate } },
+        { userId: userId }
+      ],
+    };
+  }
+  let res = await packages.find(query);
+  return res;
+};
+
+// Function to traverse up the tree and retrieve upline addresses
+async function getUplineAddresses (address, uplineAddresses = [], currentLevel = 1, maxLevel) {
+    const userData = await users.findOne({address});
+    
+    if (!userData.referBy) {
+        return uplineAddresses;
+    }
+    // Check if the maximum level is reached
+    if (currentLevel === maxLevel) {
+        uplineAddresses.push(userData.referBy)
+        return uplineAddresses;
+    }
+    // Recursively traverse up to the parent node
+    return getUplineAddresses(userData.referBy, uplineAddresses, currentLevel + 1, maxLevel);
+}
+
+// Function to get upline addresses at a specific level
+async function getUplineAddressesAtLevel(address, targetLevel, currentLevel = 0) {
+    const userData = await users.findOne({address});
+
+    if (!userData.referBy) {
+        return null;
+    }
+
+    let uplineAddresses;
+
+    while (address && currentLevel < targetLevel) {
+        uplineAddresses=address;
+        node = node.parent;
+        currentLevel++;
+    }
+
+    return uplineAddresses;
+}
