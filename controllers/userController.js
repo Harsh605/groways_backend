@@ -1,4 +1,5 @@
 import activities from "../models/activity.js";
+import incomeTransactions from "../models/incomeTransactions.js";
 import users from "../models/users.js";
 import dotenv from 'dotenv'
 dotenv.config();
@@ -19,23 +20,13 @@ export const createProfile = async (req, res)=>{
         if(exists){
             return res.status(200).json({message : "User already exists" , userId : exists})
         }
-        // Add childs in tree and check reffeal Address
-
-        const checkReffalDeatils=await users.findOne({referBy});
-
         console.log("referBy",referBy);
         let sendHalfAmountForReffal=referBy;
         
-        let treeResult =await traverseTree(referBy);
-        console.log("treeResult",treeResult);
-        if(treeResult.position=="LEFT"){
-            await users.updateOne({address:treeResult.parentAddress},{$set:{ leftAddress:address}})
-        }else{
-            await users.updateOne({address:treeResult.parentAddress},{$set:{ rightAddress:address}})
-        }
-        const totalUsers = await users.countDocuments({});   //finds the total number of documents 
-        const newUserId = totalUsers + 501;    //adds 500 to the total doument to get the new id..id starting from 501
         
+        const totalUsers = await users.find({}).limit(1).sort({createdAt:-1});   //finds the total number of documents 
+        if(!totalUsers) return res.status(500).json({error:"Internel Server Error"});        
+        const newUserId = Number(totalUsers[0].userId) + 1; 
         const newUser = await users.create({
             address,
             email,
@@ -82,18 +73,30 @@ export const updateData=async(req,res)=>{
     try{
         const {address , referBy, transactionHash ,uplineAddresses,amount,levelDistribution} = req.body;
         const exists = await users.findOne({address});
+        const existsRefer = await users.findOne({address:referBy});
+        let treeResult =await traverseTree(referBy);
+        console.log("treeResult",treeResult);
+        if(treeResult.position=="LEFT"){
+            await users.updateOne({address:treeResult.parentAddress},{$set:{ leftAddress:address}})
+        }else{
+            await users.updateOne({address:treeResult.parentAddress},{$set:{ rightAddress:address}})
+        }
         if(!exists){
             return res.status(200).json({message : "User Not Exits"})
         }
-        await users.updateOne({address:referBy},{$set:{ refferalIncome:(amount/2)}})
+        if(!existsRefer){
+            return res.status(200).json({message : "Refer Address Not Exits"})
+        }
+        await users.updateOne({address:referBy},{$set:{ refferalIncome:((existsRefer.refferalIncome)+(amount/2))}})
         const updateDataForUser={
             transactionHash,
             isActive:true
         }
         await users.updateOne({address},{$set:updateDataForUser});
-        let amountToDistributeInLeveles=amount/2
+        let uplineAddressesData;
         for(let i in uplineAddresses){
-            await users.updateOne({"address":uplineAddresses[i]},{$set:{"levelIncome":levelDistribution[i]}});
+            uplineAddressesData=await users.findOne({address:uplineAddresses[i]})
+            await users.updateOne({"address":uplineAddresses[i]},{$set:{"levelIncome":(uplineAddressesData.levelIncome+levelDistribution[i])}});
         }
         await activities.create({
             userId : exists.userId,            // creates teh activity 
@@ -111,7 +114,7 @@ export const updateProfile = async(req, res)=>{
     try{
         const { address, transactionHash, email, name, mobileNumber } = req.body;
         
-        if (!address || !transactionHash) {
+        if (!address) {
             return res.status(400).json({ message: "Please provide address and transactionHash" });
         }
         const existingUser = await users.findOne({address : address});
@@ -274,4 +277,30 @@ export const fetchMyReferral = async(req, res)=>{
 }
 
 
+export const fetchIncomeTransaction = async(req, res)=>{
+    try{
+        const { address} = req.params;
+        if(!address){
+            return res.status(400).json({error : "No address provided"})
+        }
+        const exists = await users.findOne({address});
+        if(!exists){
+            return res.status(400).json({error : "No such user found"})
+        }
+        // const allTeam = await users.find({address : exists.referTo});
+        const teamAddresses = exists.referTo;
 
+        const teamTransactions = await incomeTransactions.find({
+            $or : [
+                {fromAddress : {$in : teamAddresses}},
+                {toAddress : {$in : teamAddresses}}
+            ]
+        });
+
+        return res.status(200).json({teamTransactions});
+
+
+    }catch(error){
+        return res.status(500).json({error : "Internal server error"});
+    }
+}

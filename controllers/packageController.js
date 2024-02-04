@@ -1,90 +1,78 @@
+import { getAddress } from "../helpers/getPackageAddress.js";
 import activities from "../models/activity.js";
 import packages from "../models/package.js";
+// import getAddress from '../helpers/getPackageAddress.js'
+
 import users from "../models/users.js";
 
 // function for insert data in package model 
 export const buyPackage=async(req,res)=>{
     try{
-        const {userId , address, transactionHash, packageType } = req.body;
+        const {userId , address, packageType } = req.body;
         // Check all the values coming from req.body
-        if(!userId) res.status(400).json({message:"Invalid userId.userId must contain some value"});
-        if(!address) res.status(400).json({message:"Invalid address.address must contain some value"});
-        if(!packageType) res.status(400).json({message:"Invalid packageType.packageType must contain some value"});
+        if(!userId) return res.status(400).json({message:"Invalid userId.userId must contain some value"});
+        if(!address) return res.status(400).json({message:"Invalid address.address must contain some value"});
+        if(!packageType) return res.status(400).json({message:"Invalid packageType.packageType must contain some value"});
         //==================================================//
         // check if user is present in our systwm or not 
         const exists = await users.findOne({address});
         if(!exists){
-            res.status(400).json({message:"User Not Found"});
+            return res.status(400).json({message:"User Not Found"});
         }
         if(exists.packageBought.includes(packageType)){
-            res.status(400).json({message:"package Already Bought"});
+            return res.status(400).json({message:"package Already Bought"});
         }
         let  refferAddressOfUser=exists.referBy;
         //==================================================//
-        let upgradePackgeAddress;
-        let upgradePackgeAddressData;
-        if(packageType=='20'){
-            upgradePackgeAddress=await getUplineAddresses(address,2);
-            upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-            if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                upgradePackgeAddress=await getUplineAddresses(address,3);
-                upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                    upgradePackgeAddress=await getUplineAddresses(address,4);
-                    upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                    if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                        upgradePackgeAddress=await getUplineAddresses(address,5);
-                        upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                        if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                            upgradePackgeAddress=await getUplineAddresses(address,6);
-                            upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                            if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                                upgradePackgeAddress=await getUplineAddresses(address,7);
-                                upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                                if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                                    upgradePackgeAddress=await getUplineAddresses(address,8);
-                                    upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                                    if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                                        upgradePackgeAddress=await getUplineAddresses(address,9);
-                                        upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                                        if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                                            upgradePackgeAddress=await getUplineAddresses(address,10);
-                                            upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                                            if(!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))){
-                                                upgradePackgeAddress=await getUplineAddresses(address,11);
-                                                upgradePackgeAddressData=await users.findOne({upgradePackgeAddress})
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-        }
-        let {uplineAddresses,currentLevel}=await getUplineAddresses(address);
-        let amountToDistributetoRefferal = Number(packageType)/2; // 123
+        let packageAddress=await getAddress(address,packageType);
+        console.log("packageAddress",packageAddress);
+        if(!packageAddress) packageAddress=process.env.admin_address;
         
-        // const boughtPackage = await packages.create({
-        //     userId,
-        //     address,
-        //     transactionHash,
-        //     package:packageType
-        // });
-        // await boughtPackage.save();
-
-        // await activities.create({
-        //     userId ,               // creates teh activity 
-        //     activiy : `ID ${userId} +${packageType}BUSD`,
-        //     transactionHash 
-        // });
-
-        return res.status(200).json({message : "Data Validate successfully",data:{"refferAddress":refferAddressOfUser,"uplineAddres":uplineAddresses,"amountForReffeal":Number(packageType)}})
+        return res.status(200).json({message : "Data Validate successfully",data:{"refferAddress":refferAddressOfUser,"packageUpdatAddress":packageAddress,"amount":Number(packageType),"userId":exists.userId}})
 
     }catch (error){
         console.log("error",error.message);
+    }
+}
+
+export const updateDataForPackage=async(req,res)=>{
+    try{
+        const {address , refferAddress, transactionHash ,packageAddress,amount,userId} = req.body;
+        const exists = await users.findOne({address});
+        const existsRefferAddress = await users.findOne({address:refferAddress});
+        const existsPackageAddress = await users.findOne({address:packageAddress});
+        if(!exists){
+            return res.status(200).json({message : "User Not Exits"})
+        }
+        if(!existsRefferAddress){
+            return res.status(200).json({message : "Reffer Address Not Exits"})
+        }
+        if(!existsPackageAddress){
+            return res.status(200).json({message : "Package Address Not Exits"})
+        }
+
+        await users.updateOne({address:refferAddress},{$set:{ refferalIncome:((existsRefferAddress.refferalIncome)+(amount/2))}})
+        await users.updateOne({address:packageAddress},{$set:{ packageIncome:((existsPackageAddress.refferalIncome)+(amount/2))}})
+        await activities.create({
+            userId ,               // creates teh activity 
+            activiy : `ID ${userId} +${amount}BUSD`,
+            transactionHash 
+        });
+        await users.findOneAndUpdate(
+            { address: address },
+            { $push: { packageBought: amount.toString() } },        //updates the referto array and adds the new user that he referred to his array
+            { new: true }
+            ); 
+        const boughtPackage = await packages.create({
+            userId,
+            address,
+            transactionHash,
+            package:amount.toString()
+        });
+        await boughtPackage.save();
+        return res.status(200).json({"message":`User Bought ${amount} BUSD Package successFully`})
+    }catch(error){
+        console.log(`there is error in data updating ${error}`)
     }
 }
 
@@ -136,37 +124,3 @@ const filterData = async (userId, startDate, endDate) => {
   return res;
 };
 
-// Function to traverse up the tree and retrieve upline addresses
-async function getUplineAddresses (address, uplineAddresses = [], currentLevel = 1, maxLevel) {
-    const userData = await users.findOne({address});
-    
-    if (!userData.referBy) {
-        return uplineAddresses;
-    }
-    // Check if the maximum level is reached
-    if (currentLevel === maxLevel) {
-        uplineAddresses.push(userData.referBy)
-        return uplineAddresses;
-    }
-    // Recursively traverse up to the parent node
-    return getUplineAddresses(userData.referBy, uplineAddresses, currentLevel + 1, maxLevel);
-}
-
-// Function to get upline addresses at a specific level
-async function getUplineAddressesAtLevel(address, targetLevel, currentLevel = 0) {
-    const userData = await users.findOne({address});
-
-    if (!userData.referBy) {
-        return null;
-    }
-
-    let uplineAddresses;
-
-    while (address && currentLevel < targetLevel) {
-        uplineAddresses=address;
-        node = node.parent;
-        currentLevel++;
-    }
-
-    return uplineAddresses;
-}

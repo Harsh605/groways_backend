@@ -1,2 +1,0 @@
-hello testing3
-hello testing1
