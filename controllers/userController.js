@@ -161,12 +161,8 @@ export const getProfile = async(req, res)=>{
         if (!exists) {
             return res.status(400).json({ message: "No such user found" });
         } else {
-            const userRefferData=await users.findOne({ address: exists.referBy });
-            const sponsorId = null;
-            if(userRefferData){
-            sponsorId = userRefferData.userId ? userRefferData.userId : sponsorId;
-            }
-            return res.status(200).json({ userData: exists,sponsorId:sponsorId})
+            const userRefferData=users.findOne({ address: exists.referBy });
+            return res.status(200).json({ userData: exists,data:userRefferData.userId})
         }
 
     }catch(error){
@@ -236,39 +232,6 @@ export const fetchAllUsers = async(req, res)=>{
         }
 
         return res.status(200).json({allUsers});
-
-    }catch(error){
-        console.log(`error in fetch all users in controllers : ${error.message}`);
-        return res.status(500).json({error : "Internal server error"})
-    }
-}
-
-export const fetchTeamUsers = async(req, res)=>{
-    try{
-        const {startDate , endDate,address} = req.query;
-       
-        if ((startDate && isNaN(Date.parse(startDate))) || (endDate && isNaN(Date.parse(endDate)))) {
-            return res.status(400).json({ error: "Invalid date format" });  // YYYY-MM-DD
-        }
-
-        let userData=await users.findOne({address})
-        if(!userData) return res.status(400).json({message:"User Not Found"});
-
-        let teamUsers;
-        let allTeam=await getDownlineAddress(address,[]);
-        console.log("allteam",allTeam);
-        if(startDate && endDate){
-            teamUsers = await filterData(startDate , endDate);
-        }else{
-            if(!allTeam) return res.status(404).json({message:"Data Not Found"});
-            else 
-            {
-                for(let i in allTeam){
-                    teamUsers.push( await users.findOne({address:allTeam[i]}));
-                }
-            }
-        }
-        return res.status(200).json({data:teamUsers});
 
     }catch(error){
         console.log(`error in fetch all users in controllers : ${error.message}`);
@@ -361,22 +324,4 @@ export const showAnnouncement = async(req, res)=>{
         console.log(`error in showing announcement`);
         return res.status(500).json({error : "Internal server error"})
     }
-}
-
-const getDownlineAddress=async(address,downlineAddresses)=>{
-    const userData=await users.findOne({address});
-    
-        console.log(`userData is found for ${address}`)
-        if(userData.leftAddress) {
-            console.log(`left address is found for ${address}====> ${userData.leftAddress}`)
-            downlineAddresses.push(userData.leftAddress);
-            return getDownlineAddress(userData.leftAddress,downlineAddresses);
-        }
-        console.log("downlineAddresses",downlineAddresses);
-        if(userData.rightAddress){
-            console.log(`right address is found for ${address}====> ${userData.rightAddress}`)
-            downlineAddresses.push(userData.rightAddress);
-            return getDownlineAddress(userData.rightAddress,downlineAddresses);
-        }
-    return downlineAddresses;
 }
