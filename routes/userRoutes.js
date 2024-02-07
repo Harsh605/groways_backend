@@ -1,9 +1,10 @@
 import express from 'express';
 import errorHandler from '../middlewares/errorHandler.js';
 import { upload } from '../middlewares/multer.js';
-import { checkUser, createProfile, fetchAllUsers, fetchIncomeTransaction, fetchMyReferral, getProfile, updateData, updateProfile } from '../controllers/userController.js';
+import { checkUser, createProfile, fetchAllUsers, fetchIncomeTransaction, fetchMyReferral, fetchTeamUsers, getProfile, showAnnouncement, updateData, updateProfile } from '../controllers/userController.js';
 import { buyPackage,fetchPackage, updateDataForPackage } from '../controllers/packageController.js';
 import { buySlot, fetchslot, updateSlot } from '../controllers/slotController.js';
+import { fetchPackageForuser, fetchSlotsForUser } from '../controllers/getpackageandslotcontroller.js';
 const router = express.Router();
 
 router.post('/create' , [upload.fields([{ name: 'profilePicture', maxCount: 1 }]),errorHandler] , createProfile);
@@ -27,6 +28,7 @@ router.patch('/updateSlotdata',updateSlot);
 // router.get('/allusers/:startDate?/:endData?' , fetchAllUsers)
 router.get('/allUsers' , fetchAllUsers)      // Note : This route is using query of start and end date
 
+router.get('/fetchTeamMember',fetchTeamUsers);
 // router.get('/referrals/:address/:startDate?/:endDate?' , fetchMyReferral)
 router.get('/referrals/:address' , fetchMyReferral)  // Note : This route is using query of start and end date
 
@@ -35,4 +37,9 @@ router.get('/referrals/:address' , fetchMyReferral)  // Note : This route is usi
 router.get('/transactions/:address' , fetchIncomeTransaction);
 
 
+//announcements
+router.get('/announcements' , showAnnouncement);
+
+router.get('/packageofuser/:address' , fetchPackageForuser)
+router.get('/slotsofuser/:userId' , fetchSlotsForUser);
 export default router;
