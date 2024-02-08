@@ -91,15 +91,44 @@ export const updateData=async(req,res)=>{
             return res.status(200).json({message : "Refer Address Not Exits"})
         }
         await users.updateOne({address:referBy},{$set:{ refferalIncome:((existsRefer.refferalIncome)+(amount/2))}})
-        await users.updateOne({address:process.env.admin_address},{$set:{ "levelIncome":adminIncome}})
+
+        await incomeTransactions.create({
+            fromUserId:exists.userId,
+            toUserId:existsRefer.userId,
+            fromAddress:address,
+            toAddress:referBy,
+            incomeType:"Referral income",
+            amount:amount/2
+        })
         const updateDataForUser={
             transactionHash,
             isActive:true
+        
         }
         await users.updateOne({address},{$set:updateDataForUser});
+        const existsAdmin = await users.findOne({address:process.env.admin_address});
+
+        await incomeTransactions.create({
+            fromUserId:exists.userId,
+            toUserId:existsAdmin.userId,
+            fromAddress:address,
+            toAddress:process.env.admin_address,
+            incomeType:"Level income",
+            amount:amount/2
+        })
+        await users.updateOne({"address":process.env.admin_address},{$set:{"levelIncome":(existsAdmin.levelIncome+adminIncome)}});
+
         let uplineAddressesData;
         for(let i in uplineAddresses){
             uplineAddressesData=await users.findOne({address:uplineAddresses[i]})
+            await incomeTransactions.create({
+                fromUserId:exists.userId,
+                toUserId:uplineAddressesData.userId,
+                fromAddress:address,
+                toAddress:uplineAddresses[i],
+                incomeType:"Level income",
+                amount:levelDistribution[i]
+            })
             await users.updateOne({"address":uplineAddresses[i]},{$set:{"levelIncome":(uplineAddressesData.levelIncome+levelDistribution[i])}});
         }
 
