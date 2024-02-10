@@ -201,34 +201,110 @@ export const getProfile = async(req, res)=>{
 }
 
 
-const traverseTree=async(address)=>{
-    console.log("address",address)
-    const userData = await users.findOne({address});
-    let addressforTree;
-    if(userData){
-        if(!userData.leftAddress) { 
-            addressforTree={"parentAddress":address,"position":"LEFT"}
-            return addressforTree;
-    }
-    if(!userData.rightAddress) {
-        addressforTree={"parentAddress":address,"position":"RIGHT"}
-            return addressforTree;
-    }
+// const traverseTree=async(address)=>{
+//     console.log("address",address)
+//     const userData = await users.findOne({address});
+//     let addressforTree;
+//     if(userData){
+//         if(!userData.leftAddress) { 
+//             addressforTree={"parentAddress":address,"position":"LEFT"}
+//             return addressforTree;
+//     }
+//     if(!userData.rightAddress) {
+//         addressforTree={"parentAddress":address,"position":"RIGHT"}
+//             return addressforTree;
+//     }
 
-    if(userData.leftAddress) {
-    addressforTree=await traverseTree(userData.leftAddress)
-       return addressforTree;
-    };
-    if(userData.rightAddress) {
-        addressforTree= await  traverseTree(userData.rightAddress);
-        return addressforTree;
-    }
-    }else return addressforTree;
+//     if(userData.leftAddress) {
+//     addressforTree=await traverseTree(userData.leftAddress)
+//        return addressforTree;
+//     };
+//     if(userData.rightAddress) {
+//         addressforTree= await  traverseTree(userData.rightAddress);
+//         return addressforTree;
+//     }
+//     }else return addressforTree;
     
-}
+// }
 
 
 // Function to traverse up the tree and retrieve upline addresses
+
+const traverseTree = async (address) => {
+    console.log("address", address);
+    const userData = await users.findOne({ address });
+
+    if (!userData) {
+        console.log("User not found");
+        return null;
+    }
+
+    console.log("Checking address", address);
+
+    if (!userData.leftAddress) {
+        console.log("Found available space at left of", address);
+        return { "parentAddress": address, "position": "LEFT" };
+    }
+
+    if (!userData.rightAddress) {
+        console.log("Found available space at right of", address);
+        return { "parentAddress": address, "position": "RIGHT" };
+    }
+
+    // Check level 1
+    console.log("Checking level 1 bottom from left to right");
+    let currentLevel = [userData.leftAddress, userData.rightAddress];
+    let nextLevel = [];
+
+    for (const childAddress of currentLevel) {
+        const childData = await users.findOne({ address: childAddress });
+
+        // Check if there's space in the child subtree
+        if (!childData.leftAddress || !childData.rightAddress) {
+            console.log("Found available space in the child subtree of", childAddress);
+            return await traverseTree(childAddress);
+        }
+
+        // Add children of the current node to the next level
+        if (childData.leftAddress) {
+            nextLevel.push(childData.leftAddress);
+        }
+        if (childData.rightAddress) {
+            nextLevel.push(childData.rightAddress);
+        }
+    }
+
+    // Move to the next level if no space is found in level 1
+    while (nextLevel.length > 0) {
+        currentLevel = nextLevel;
+        nextLevel = [];
+
+        console.log("Checking next level bottom from left to right");
+
+        for (const childAddress of currentLevel) {
+            const childData = await users.findOne({ address: childAddress });
+
+            // Check if there's space in the child subtree
+            if (!childData.leftAddress || !childData.rightAddress) {
+                console.log("Found available space in the child subtree of", childAddress);
+                return await traverseTree(childAddress);
+            }
+
+            // Add children of the current node to the next level
+            if (childData.leftAddress) {
+                nextLevel.push(childData.leftAddress);
+            }
+            if (childData.rightAddress) {
+                nextLevel.push(childData.rightAddress);
+            }
+        }
+    }
+
+    console.log("No available space found at any level");
+    return null;
+}
+
+
 async function getUplineAddresses (address, uplineAddresses = [], currentLevel = 0, maxLevel = 11) {
     const userData = await users.findOne({address});
     if (!userData.parentAddress) {
