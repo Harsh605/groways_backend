@@ -63,7 +63,7 @@ export const buyPackage=async(req,res)=>{
         return res.status(200).json({message : "Data Validate successfully",data:{"refferAddress":refferAddressOfUser,"packageUpdatAddress":packageAddress,"amount":Number(packageType),"userId":exists.userId}})
 
     }catch (error){
-        console.log("error",error.message);
+        console.log("error",error);
     }
 }
 

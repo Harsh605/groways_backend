@@ -216,22 +216,22 @@ export const getAddress = async (packageType,address) => {
         if (!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))) {
             upgradePackgeAddress = await getUplineAddresses(address, 7);
             upgradePackgeAddressData = await users.findOne({
-                upgradePackgeAddress
+                address:upgradePackgeAddress
             })
             if (!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))) {
                 upgradePackgeAddress = await getUplineAddresses(address, 8);
                 upgradePackgeAddressData = await users.findOne({
-                    upgradePackgeAddress
+                    address:upgradePackgeAddress
                 })
                 if (!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))) {
                     upgradePackgeAddress = await getUplineAddresses(address, 9);
                     upgradePackgeAddressData = await users.findOne({
-                        upgradePackgeAddress
+                        address: upgradePackgeAddress
                     })
                     if (!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))) {
                         upgradePackgeAddress = await getUplineAddresses(address, 10);
                         upgradePackgeAddressData = await users.findOne({
-                            upgradePackgeAddress
+                            address:upgradePackgeAddress
                         })
                         if (!(upgradePackgeAddress && upgradePackgeAddressData.packageBought.includes(packageType))) {
                             upgradePackgeAddress = await getUplineAddresses(address, 11);
