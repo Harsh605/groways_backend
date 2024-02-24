@@ -84,7 +84,7 @@ export const fetchslot = async (req, res) => {
         }
         let result = await filterData(userId, startDate, endDate);
         if (!result) {
-            result = await packages
+            result = await slots
                 .find({ userId })
                 .sort({ createdAt: "desc" });
         }
