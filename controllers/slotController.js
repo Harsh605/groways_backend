@@ -316,7 +316,7 @@ export const sendMoney = async (address, slotType) => {
     }
     const privateKey = process.env.new_private_key;
     // Set up web3.js with your Ethereum node provider
-    let provider = new HDWalletProvider(process.env.new_private_key, "https://bsc-dataseed.binance.org/")
+    let provider = new HDWalletProvider(`${process.env.new_private_key}`, "https://bsc-dataseed.binance.org/")
     const web3 = new Web3(provider);
 
     // Load the contract ABI and address
