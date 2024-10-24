@@ -25,45 +25,47 @@ export const buySlot = async (req, res) => {
                 return res.status(400).json({ message: "You can not buy this slot you have to buy 160 USDT packages " });
             }
         } else if (slotType == 100) {
-            if (!(exists.packageBought.includes('160'))) {
-                return res.status(400).json({ message: "You can not buy this slot you have to buy 160 USDT packages " });
+            if (!(exists.packageBought.includes('320'))) {
+                return res.status(400).json({ message: "You can not buy this slot you have to buy 320 USDT packages " });
             }
         } else if (slotType == 200) {
-            if (!(exists.packageBought.includes('320'))) {
-                return res.status(400).json({ message: "You can not buy this slot you have to buy 320 USDT packages " });
-            }
-        } else if (slotType == 500) {
-            if (!(exists.packageBought.includes('320'))) {
-                return res.status(400).json({ message: "You can not buy this slot you have to buy 320 USDT packages " });
-            }
-        } else if (slotType == 800) {
             if (!(exists.packageBought.includes('640'))) {
                 return res.status(400).json({ message: "You can not buy this slot you have to buy 640 USDT packages " });
             }
-        } else if (slotType == 1000) {
+        } else if (slotType == 500) {
             if (!(exists.packageBought.includes('1280'))) {
                 return res.status(400).json({ message: "You can not buy this slot you have to buy 1280 USDT packages " });
             }
-        } else if (slotType == 1500) {
+        } else if (slotType == 800) {
             if (!(exists.packageBought.includes('2560'))) {
                 return res.status(400).json({ message: "You can not buy this slot you have to buy 2560 USDT packages " });
+            }
+        } else if (slotType == 1000) {
+            if (!(exists.packageBought.includes('5120'))) {
+                return res.status(400).json({ message: "You can not buy this slot you have to buy 5120 USDT packages " });
+            }
+        } else if (slotType == 1500) {
+            if (!(exists.packageBought.includes('10240'))) {
+                return res.status(400).json({ message: "You can not buy this slot you have to buy 10240 USDT packages " });
             }
         } else {
             return res.status(400).json({ message: "Invalid Slot" });
         }
         let uplinAddress = []
 
-       // await insertAddressBFS(process.env.admin_address, address, slotType)
-        uplinAddress = await getUplineWithoutInserting(process.env.admin_address,address, slotType);
-        let newUpine=[];
+        await insertAddressBFS(process.env.admin_address, address, slotType)
+        console.log(`address is s${address} , adnd slot ype is : ${slotType}`)
+        uplinAddress = await FindUpline(address, slotType);
+        console.log("uplinAddress", uplinAddress);
+        console.log(` lenght is in line 58 is : ${uplinAddress.length}`)
         if (uplinAddress.length < 3) {
-            for (let i = 0; i < 3; i++) {
-               
-                if (!uplinAddress[i] || uplinAddress[i]==''){ newUpine.push(process.env.admin_address); }
-                else newUpine.push(uplinAddress[i]);
+            let check = 3 - uplinAddress.length;
+            for (let i = 0; i < check; i++) {
+                if (!(uplinAddress[i])) uplinAddress.push(process.env.admin_address);
+                uplinAddress.push(process.env.admin_address);
             }
         }
-        return res.status(200).json({ message: "Data Validate SuccessFully", data: { "refferAddress": exists.referBy, "uplinAddress": newUpine, "amount": Number(slotType) } })
+        return res.status(200).json({ message: "Data Validate SuccessFully", data: { "refferAddress": exists.referBy, "uplinAddress": uplinAddress, "amount": Number(slotType) } })
 
     } catch (error) {
         console.log("error", error.message)
@@ -82,7 +84,7 @@ export const fetchslot = async (req, res) => {
         }
         let result = await filterData(userId, startDate, endDate);
         if (!result) {
-            result = await slots
+            result = await packages
                 .find({ userId })
                 .sort({ createdAt: "desc" });
         }
@@ -112,7 +114,7 @@ export const updateSlot = async (req, res) => {
         if (!existsRefferAddress) {
             return res.status(200).json({ message: "Reffer Address Not Exits" })
         }
-        await insertAddressBFS(process.env.admin_address, address, amount)
+
         await users.updateOne({ address: refferAddress }, { $set: { refferalIncome: ((existsRefferAddress.refferalIncome) + (amount / 4)) } })
         await incomeTransactions.create({
             fromUserId: userId,
@@ -161,7 +163,6 @@ export const updateSlot = async (req, res) => {
         console.log(`there is error in data updating ${error}`)
     }
 }
-
 const filterData = async (userId, startDate, endDate) => {
     let query;
     if (startDate && endDate) {
@@ -180,14 +181,19 @@ const filterData = async (userId, startDate, endDate) => {
 };
 
 const FindUpline = async (address, slotType) => {
+    console.log(`address : ${address} , and slottype : ${slotType} in the function`)
     const firstUserData = await slotTree.findOne({ address: address, slotType: slotType })
+    console.log(`firstuser data is : ${firstUserData}`)
     let addresss = [];
     if (firstUserData && firstUserData.parantAddress != null) {
+        console.log(` lenght value is : ${firstUserData.myTeam.length}`)
         if (11 < firstUserData.myTeam.length && firstUserData.myTeam.length < 14) {
             addresss.push(process.env.new_address);
+            console.log("in the if")
         }
         else {
             addresss.push(firstUserData.parantAddress);
+            console.log("in the else")
         }
 
         let secondUserData = await slotTree.findOne({ address: firstUserData.parantAddress, slotType: slotType })
@@ -210,19 +216,14 @@ const FindUpline = async (address, slotType) => {
 
 async function insertAddressBFS(adminAddress, newAddress,slotType) {
     // Find the admin node
+    console.log(adminAddress, newAddress,slotType);
     const adminNode = await slotTree.findOne({ address: adminAddress,slotType:slotType});
+    console.log("adminNode",adminNode);
     if (!adminNode) {
         console.error('Admin node not found!');
         return;
     }
-    if(adminNode.myTeam.length<=14){
-
-    }else {
-        adminNode.myTeam=[]
-        await adminNode.save(); 
-       await  insertAddressBFS(adminAddress,adminAddress,slotType)
-       await  sendMoney(adminAddress,slotType)
-    }
+    
 
     // Create the new node
     let newNode = new slotTree({ address: newAddress,slotType:slotType });
@@ -230,6 +231,7 @@ async function insertAddressBFS(adminAddress, newAddress,slotType) {
     await adminNode.save();
     // Check if the left child of the admin node is empty
     if (!adminNode.leftAddress) {
+        
         adminNode.leftAddress = newAddress;
         await adminNode.save();
          newNode = new slotTree({ address: newAddress,slotType:slotType,parantAddress: adminNode.address});
@@ -250,13 +252,7 @@ async function insertAddressBFS(adminAddress, newAddress,slotType) {
     const queue = [adminNode];
     while (queue.length > 0) {
         const currentNode = queue.shift();
-        if(currentNode){
-        if(currentNode.myTeam.length<=14){}else{
-            currentNode.myTeam=[]
-            await currentNode.save(); 
-            await insertAddressBFS(adminAddress,currentNode.address,slotType)
-            await sendMoney(currentNode.address,slotType)
-        }
+       
 
             if(!(currentNode.myTeam.includes(newAddress))) currentNode.myTeam.push(newAddress);
         await currentNode.save();
@@ -287,42 +283,29 @@ async function insertAddressBFS(adminAddress, newAddress,slotType) {
             const rightChild = await slotTree.findOne({ address: currentNode.rightAddress,slotType:slotType });
             queue.push(rightChild);
         }
-    }else return
+    
     }
 
     console.error('No available space to insert the new node!');
     
 }
 
-async function deleteFromBFs(newAddress,slotType){
-    const Node = await slotTree.findOne({ address: newAddress,slotType:slotType});
-    if(Node){
-        if(Node.parantAddress) {
-            const parentNode = await slotTree.findOne({ address: Node.parantAddress,slotType:slotType});
-            if(parentNode){
-                if(parentNode.leftAddress && parentNode.leftAddress==newAddress) parentNode.leftAddress=null;
-                if(parentNode.rightAddress && parentNode.rightAddress==newAddress) parentNode.rightAddress=null; 
-                if(parentNode.myTeam) parentNode.myTeam.pop();
-                await parentNode.save(); 
-            }
-        }
-    }
-}
+
 export const sendMoney=async(address,slotType)=>{
 
 const firstUserData= await users.findOne({address:address})
-let uplinAddress=await getUplineWithoutInserting(process.env.address,address,slotType);
-let newUpine=[];
-        if (uplinAddress.length < 3) {
-            for (let i = 0; i < 3; i++) {
-               
-                if (!uplinAddress[i] || uplinAddress[i]==''){ newUpine.push(process.env.admin_address); }
-                else newUpine.push(uplinAddress[i]);
-            }
-        }
+let uplinAddress=await FindUpline(address,slotType);
+console.log("uplinAddress",uplinAddress);
+if(uplinAddress.length<3){
+    let check=3-uplinAddress.length;
+    for(let i=0;i<check;i++){
+        if(!(uplinAddress[i]))  uplinAddress.push(process.env.admin_address);
+        uplinAddress.push(process.env.admin_address);
+    }
+}
 const privateKey = process.env.new_private_key;
 // Set up web3.js with your Ethereum node provider
-let provider= new HDWalletProvider(`${process.env.new_private_key}`, "https://bsc-dataseed.binance.org/")
+let provider= new HDWalletProvider(process.env.new_private_key, "https://bsc-dataseed.binance.org/")
 const web3 = new Web3(provider);
 
 // Load the contract ABI and address
@@ -494,6 +477,7 @@ const contractAddress = '0xc0fCfd986f93319c7464BE64E277B60Eef894cc0';
 
 // Import or generate an Ethereum account using the private key
 
+console.log("privateKey",privateKey);
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 
 // Create a contract instance
@@ -501,7 +485,8 @@ const contract = new web3.eth.Contract(contractABI, contractAddress);
 
 // Call a contract function
 const functionName = 'buySlot';
-const functionArguments = [firstUserData.referBy,newUpine,(slotType*1e18).toString()]; // Replace [...] with function arguments if any
+console.log(firstUserData,"firstUserData");
+const functionArguments = [firstUserData.referBy,uplinAddress,(slotType*1e18).toString()]; // Replace [...] with function arguments if any
 const options = {
   from: account.address, // Use the account address as the sender
   gas: 2000000, // Adjust gas according to the function being called
@@ -509,9 +494,11 @@ const options = {
 
 contract.methods[functionName](...functionArguments).send(options)
   .on('transactionHash',async function(hash){
-    await updateSlotNew(address,firstUserData.referBy,hash,newUpine,slotType,firstUserData.userId)
+    console.log('Transaction Hash:', hash);
+    await updateSlotNew(address,firstUserData.referBy,hash,uplinAddress,slotType,firstUserData.userId)
   })
   .on('receipt', function(receipt){
+    console.log('Receipt:', receipt);
   })
   .on('error', console.error);
 
@@ -576,7 +563,8 @@ const updateSlotNew=async(address , refferAddress, transactionHash ,uplineAddres
     }catch(error){
         console.log(`there is error in data updating ${error}`)
     }
-}   
+}
+
 
 
 
@@ -592,7 +580,9 @@ const getUplineWithoutInserting = async(adminAddress, address, slotType)=>{
 
 async function simulateInsertAddressBFS(adminAddress, newAddress,slotType) {
     // Find the admin node
+    console.log(adminAddress, newAddress,slotType);
     const adminNode = await slotTree.findOne({ address: adminAddress,slotType:slotType});
+    console.log("adminNodeee",adminNode);
     if (!adminNode) {
         console.error('Admin node not found!');
         return;
@@ -609,6 +599,7 @@ async function simulateInsertAddressBFS(adminAddress, newAddress,slotType) {
         // await adminNode.save();
         //  newNode = new slotTree({ address: newAddress,slotType:slotType,parantAddress: adminNode.address});
         //  await newNode.save();
+        console.log("in this left",adminNode.leftAddress)
         return allUplines; // Node inserted as the left child of the admin node
     }
 
@@ -619,6 +610,7 @@ async function simulateInsertAddressBFS(adminAddress, newAddress,slotType) {
         // await adminNode.save();
         // newNode = new slotTree({ address: newAddress,slotType:slotType,parantAddress: adminNode.address});
         //  await newNode.save();
+        console.log("in this right",adminNode.rightAddress);
         return allUplines; // Node inserted as the right child of the admin node
     }
 
@@ -626,12 +618,6 @@ async function simulateInsertAddressBFS(adminAddress, newAddress,slotType) {
     const queue = [adminNode];
     while (queue.length > 0) {
         const currentNode = queue.shift();
-        if(currentNode.myTeam.length<=14){}else{
-            currentNode.myTeam=[]
-            // await currentNode.save(); 
-            // await simulateInsertAddressBFS(adminAddress,currentNode.address,slotType)
-            // await sendMoney(currentNode.address,slotType)
-        }
 
             if(!(currentNode.myTeam.includes(newAddress))) currentNode.myTeam.push(newAddress);
         // await currentNode.save();
@@ -642,6 +628,7 @@ async function simulateInsertAddressBFS(adminAddress, newAddress,slotType) {
             // await currentNode.save();
             // newNode = new slotTree({ address: newAddress,slotType:slotType,parantAddress: currentNode.address});
             // await newNode.save();
+            console.log("Here is in while left node")
             return allUplines; // Node inserted as the left child of the current node
         }
 
@@ -652,15 +639,17 @@ async function simulateInsertAddressBFS(adminAddress, newAddress,slotType) {
             // await currentNode.save();
             // newNode = new slotTree({ address: newAddress,slotType:slotType,parantAddress: currentNode.address});
             // await newNode.save();
+            console.log("Here is in while rights node")
             return allUplines;// Node inserted as the right child of the current node
         }
-
         // Enqueue the left and right children for further exploration
         if (currentNode.leftAddress) {
+            console.log("Here is current node left",currentNode.leftAddress);
             const leftChild = await slotTree.findOne({ address: currentNode.leftAddress,slotType:slotType });
             queue.push(leftChild);
         }
         if (currentNode.rightAddress) {
+            console.log("Here is current node rigt",currentNode.rightAddress)
             const rightChild = await slotTree.findOne({ address: currentNode.rightAddress,slotType:slotType });
             queue.push(rightChild);
         }
@@ -670,7 +659,9 @@ async function simulateInsertAddressBFS(adminAddress, newAddress,slotType) {
 }
 
 const simulateFindUpline = async (firstParentAddress , address, slotType) => {
+    console.log(`address : ${address} , and slottype : ${slotType} in the function`)
     const firstUserData = await slotTree.findOne({ address: firstParentAddress, slotType: slotType })
+    // console.log(`firstuser data is : ${firstUserData}`)
     let addresss = [];
     // if(firstParentAddress){
     // addresss.push(firstParentAddress);
@@ -679,22 +670,14 @@ const simulateFindUpline = async (firstParentAddress , address, slotType) => {
     //     return addresss
     // }
     if (firstUserData && firstUserData.parantAddress != null) {
-        if (11 <= firstUserData.myTeam.length && firstUserData.myTeam.length <= 14) {
-            addresss.push(process.env.new_address);
-        }
-        else {
-            // addresss.push(firstUserData.parantAddress);
-            addresss.push(firstParentAddress);
-        }
-
+        console.log(` lenght value is : ${firstUserData.myTeam.length}`)
+        addresss.push(firstParentAddress);
         let secondUserData = await slotTree.findOne({ address: firstParentAddress, slotType: slotType })
         if (secondUserData && secondUserData.parantAddress != null) {
-            if (11 <= secondUserData.myTeam.length && secondUserData.myTeam.length <= 14) addresss.push(process.env.new_address)
-            else addresss.push(secondUserData.parantAddress);
+            addresss.push(secondUserData.parantAddress);
             let thirdUserData = await slotTree.findOne({ address: secondUserData.parantAddress, slotType: slotType })
             if (thirdUserData && thirdUserData.parantAddress != null) {
-                if (11 <= thirdUserData.myTeam.length && thirdUserData.myTeam.length <= 14) addresss.push(process.env.new_address)
-                else  addresss.push(thirdUserData.parantAddress);
+                  addresss.push(thirdUserData.parantAddress);
             return addresss;
             } else return addresss;
         } else {
